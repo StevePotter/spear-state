@@ -40,6 +40,8 @@ in Proxy get trap, an array index is passed in as a string, like '0'
 would be nice to bulk change for react performance
 */
 
+const DEBUG = false
+
 export function createStore(initialState) {
   return stateNode(0, initialState ? Object.assign({}, initialState) : {}, null, null, 'root')
 }
@@ -53,7 +55,7 @@ function stateNode(level, propertyValues, parentProxy, parentInternals, name) {
 
   const internals = {
     onChange: (propertyName) => {
-      console.log(`${fullName()} onChange for '${propertyName}'`, propertyValues)
+      if (DEBUG) console.log(`${fullName()} onChange for '${propertyName}'`, propertyValues)
       if (childProxies.hasOwnProperty(propertyName)) {
         // the change occured from within a child proxy
         // to enable === checking in changes, we need to do a few chores
@@ -62,28 +64,30 @@ function stateNode(level, propertyValues, parentProxy, parentInternals, name) {
         propertyValues = Object.assign({}, propertyValues)
         // change inner child reference.
         propertyValues[propertyName] = Object.assign({}, propertyValues[propertyName])
-        console.log(`${fullName()} reassigning state and ${propertyName}`)
+        if (DEBUG) console.log(`${fullName()} reassigning state and ${propertyName}`)
       } else if (!parentProxy) {
-        console.log('need to change asdfasdf' +propertyName)
-
+        if (DEBUG) console.log('need to change asdfasdf' +propertyName)
       }
-      if (internals.subscribeCallback) {
-        console.log(`${fullName()} notifying of change on '${propertyName}'`, propertyValues)
-        internals.subscribeCallback()
+      if (internals.listeners && internals.listeners.length) {
+        if (DEBUG) console.log(`${fullName()} notifying of change on '${propertyName}'`, propertyValues)
+        internals.listeners.forEach(function(listener) { listener() })
       }
       if (parentInternals) parentInternals.onChange(name)
     }
   }
 
   const childProxies = {}
-  let subscribeCallback
 
   const externalFunctions = {
     toString: () => '[StateNode]',
     // you could just return `propertyValues`
     getState: () => Object.freeze(Object.assign({},propertyValues)),
     subscribe: (callback) => {
-      internals.subscribeCallback = callback // todo: multiple callbacks
+      if (internals.listeners) {
+        internals.listeners.push(callback)
+      } else {
+        internals.listeners = [callback]
+      }
     },
     // // changes the ent
     // replace: () => {
@@ -102,12 +106,13 @@ function stateNode(level, propertyValues, parentProxy, parentInternals, name) {
         if (childProxies.hasOwnProperty(prop)) {
           return childProxies[prop]
         }
+        // typically scalar values, including null
         if (propertyValues.hasOwnProperty(prop)) {
-          console.log(`${fullName()}['${prop}'] with existing value`)
+          if (DEBUG) console.log(`${fullName()}['${prop}'] with existing value`)
           return propertyValues[prop]
         }
-        //
-        console.log(`${fullName()}['${prop}'] is new state node`)
+        // property has never been accessed, so assume it's a new proxy
+        if (DEBUG) console.log(`${fullName()}['${prop}'] is new state node`)
         //` proxy: ' + prop, target);
         const childState = {}
         propertyValues[prop] = childState
@@ -118,12 +123,12 @@ function stateNode(level, propertyValues, parentProxy, parentInternals, name) {
 
       set(obj, prop, value) {
         // setting a value will set it on the
-        //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/handler/set
-        console.log(`setting ${prop} at level ${level} to ${value}`)
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/handler/set
+        if (DEBUG) console.log(`setting ${prop} at level ${level} to ${value}`)
         propertyValues[prop] = value // should you use Reflect.set?
         // if you do const a = app.first.second; const b = a.third; a.third = 12; // then third would have been a proxy first then reassigned as a scalar
         if (childProxies.hasOwnProperty(prop)) {
-          console.log('already had child proxy.  deleting it')
+          if (DEBUG) console.log('already had child proxy.  deleting it')
           delete childProxies[prop]
         }
         internals.onChange(prop)

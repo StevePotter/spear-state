@@ -12,7 +12,9 @@ import { createStore } from 'spear-state'
 
 const appState = createStore()
 appState.ui.tab = 'home' // note 'ui' is created automatically from magic
-appState.user.name 'Jelly Fish'
+appState.listen(() => {
+})
+appState.user.name 'Jelly Fish' // listener will be called
 
 ```
 
@@ -20,11 +22,17 @@ then, in React, you use a middleware to connect your state container to your com
 If you use react-redux, this should be familiar
 
 ```
+
+const Component = React()
+
 const mapAppState = (appState) => ({
   tab: appState.ui.tab,
   changeTab: (tab) => { appState.ui.tab = tab }
 })
+
+const ConnectedComponent = connectStore(mapAppState)(Component)
 ```
+
 
 
 ### TODO
@@ -34,6 +42,7 @@ const mapAppState = (appState) => ({
   appState.ui.tab = 'home'; appState.ui.page = 'main')
   }
 `
+- inline lodash functions
 
 ### License
 The MIT License (MIT)

@@ -14,18 +14,36 @@ tests to cover:
 */
 
 describe('getState', () => {
-  it('basic property setting', () => {
+
+  it('setting properties works', () => {
     const app = createStore()
     expect(app.getState()).to.eql({})
 
     app.a1.b1 = 4
+    app.a2 = 'hi'
+    app.a3 = null
+    // verify via getState
+    expect(app.getState()).to.eql({
+      a1: { b1: 4 },
+      a2: 'hi',
+      a3: null,
+    })
+    // verify via property accessors
     expect(app.a1.b1).to.equal(4)
-    const stateBefore = app.getState()
-
-    expect(app.getState()).to.eql({ a1: { b1: 4 }})
+    expect(app.a2).to.equal('hi')
+    expect(app.a3).to.equal(null)
   })
 
-  it('setting property makes proper changes', () => {
+  it('you can reassign an autobject to a scalar value', () => {
+    const app = createStore()
+    const a = app.first.second
+    const b = a.third // third is now an autobject
+    a.third = 'third'
+
+    expect(app.first.second.third).to.equal('third')
+  })
+
+  it('subscribe works', () => {
     const app = createStore()
 
     app.a1.b1.c1 = 4

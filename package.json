@@ -21,7 +21,9 @@
     "url": "https://github.com/stevepotter/spear-state/issues"
   },
   "homepage": "https://github.com/stevepotter/spear-state",
-  "dependencies": {},
+  "dependencies": {
+    "lodash": "^4.17.5"
+  },
   "devDependencies": {
     "babel-cli": "^6.26.0",
     "babel-core": "^6.7.4",
