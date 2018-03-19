@@ -46,7 +46,7 @@ export function createStore(initialState) {
   return stateNode(0, initialState ? Object.assign({}, initialState) : {}, null, 'root').proxy
 }
 
-
+// a stateNode represents
 function stateNode(level, intialProperties, parentInternals, name) {
   const fullName = () => {
     return `${name}@d${level}`
@@ -55,25 +55,20 @@ function stateNode(level, intialProperties, parentInternals, name) {
   // since you can't inherit from Proxy, there are some odd patterns, but this includes everything needed for statenodes to communicate
   // the .proxy is set down below
   const internals = {
-    onChange: (propertyName) => {
+    onChange: (propertyName, value) => {
       if (DEBUG) console.log(`${fullName()} onChange for '${propertyName}'`, internals.propertyValues)
-      if (internals.childStateNodes.hasOwnProperty(propertyName)) {
-        // the change occured from within a child proxy
-        // to enable === checking in changes, we need to do a few chores
-        // change propertyValues reference
-        // todo: is this redundant at all and should have an edge case for the root?
-        internals.propertyValues = Object.assign({}, internals.propertyValues)
-        // change inner child reference.
-        internals.propertyValues[propertyName] = Object.assign({}, internals.propertyValues[propertyName])
-        if (DEBUG) console.log(`${fullName()} reassigning state and ${propertyName}`)
-      } else if (!parentInternals) {
-        if (DEBUG) console.log('need to change asdfasdf' +propertyName)
-      }
+
+      if (!internals.propertyValues.hasOwnProperty(propertyName)) throw new Error(`Prop ${propertyName} not available`)
+      const reassignedChild = {}
+      reassignedChild[propertyName] = value
+      const newState = Object.assign({}, internals.propertyValues, reassignedChild)
+      internals.propertyValues = newState
+
       if (internals.listeners && internals.listeners.length) {
         if (DEBUG) console.log(`${fullName()} notifying of change on '${propertyName}'`, internals.propertyValues)
         internals.listeners.forEach(function(listener) { listener() })
       }
-      if (parentInternals) parentInternals.onChange(name)
+      if (parentInternals) parentInternals.onChange(name, newState)
     },
     detach: () => {
       parentInternals = null // this should be all we need to orphan the branch starting here.  this in essence turns it into a root node detached from the app state
@@ -141,13 +136,14 @@ function stateNode(level, intialProperties, parentInternals, name) {
         // setting a value will set it on the
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/handler/set
         if (DEBUG) console.log(`setting ${prop} at level ${level} to ${value}`)
-        internals.propertyValues[prop] = value // should you use Reflect.set?
         // if you do const a = app.first.second; const b = a.third; a.third = 12; // then third would have been a proxy first then reassigned as a scalar
         if (internals.childStateNodes.hasOwnProperty(prop)) {
           if (DEBUG) console.log('already had child proxy.  deleting it')
           delete internals.childStateNodes[prop]
         }
-        internals.onChange(prop)
+        internals.propertyValues[prop] = value // should you use Reflect.set?
+
+        internals.onChange(prop, value)
 
         return true
       }

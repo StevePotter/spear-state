@@ -47,8 +47,12 @@ describe('getState', () => {
     const app = createStore()
 
     app.a1.b1.prop1 = 'hi'
-    debugger
     app.a1.b2.prop2 = true
+
+    /*resulting in
+    app.a1 = Object.assign({}, app.a1, { b2: })
+    */
+
     // ERROR: b2 did not show up.  something with change tracking I think.
     app.a2.b3 = 23
 
@@ -88,7 +92,7 @@ describe('getState', () => {
 
 })
 
-describe('replace', () => {
-  const store = createStore()
-
-})
+// describe('replace', () => {
+//   const store = createStore()
+//
+// })
