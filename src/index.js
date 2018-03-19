@@ -47,7 +47,7 @@ export function createStore(initialState) {
 }
 
 
-function stateNode(level, initialValue, parentInternals, name) {
+function stateNode(level, intialProperties, parentInternals, name) {
   const fullName = () => {
     return `${name}@d${level}`
   }
@@ -56,21 +56,21 @@ function stateNode(level, initialValue, parentInternals, name) {
   // the .proxy is set down below
   const internals = {
     onChange: (propertyName) => {
-      if (DEBUG) console.log(`${fullName()} onChange for '${propertyName}'`, propertyValues)
+      if (DEBUG) console.log(`${fullName()} onChange for '${propertyName}'`, internals.propertyValues)
       if (internals.childStateNodes.hasOwnProperty(propertyName)) {
         // the change occured from within a child proxy
         // to enable === checking in changes, we need to do a few chores
         // change propertyValues reference
         // todo: is this redundant at all and should have an edge case for the root?
-        propertyValues = Object.assign({}, propertyValues)
+        internals.propertyValues = Object.assign({}, internals.propertyValues)
         // change inner child reference.
-        propertyValues[propertyName] = Object.assign({}, propertyValues[propertyName])
+        internals.propertyValues[propertyName] = Object.assign({}, internals.propertyValues[propertyName])
         if (DEBUG) console.log(`${fullName()} reassigning state and ${propertyName}`)
       } else if (!parentInternals) {
         if (DEBUG) console.log('need to change asdfasdf' +propertyName)
       }
       if (internals.listeners && internals.listeners.length) {
-        if (DEBUG) console.log(`${fullName()} notifying of change on '${propertyName}'`, propertyValues)
+        if (DEBUG) console.log(`${fullName()} notifying of change on '${propertyName}'`, internals.propertyValues)
         internals.listeners.forEach(function(listener) { listener() })
       }
       if (parentInternals) parentInternals.onChange(name)
@@ -78,14 +78,14 @@ function stateNode(level, initialValue, parentInternals, name) {
     detach: () => {
       parentInternals = null // this should be all we need to orphan the branch starting here.  this in essence turns it into a root node detached from the app state
     },
-    childStateNodes: {}
-    propertyValues,
+    childStateNodes: {},
+    propertyValues: intialProperties,
   }
 
   const externalFunctions = {
     toString: () => '[StateNode]',
     // you could just return `propertyValues`
-    getState: () => Object.freeze(Object.assign({},propertyValues)),
+    getState: () => Object.freeze(Object.assign({},internals.propertyValues)),
     subscribe: (callback) => {
       if (internals.listeners) {
         internals.listeners.push(callback)
@@ -100,7 +100,7 @@ function stateNode(level, initialValue, parentInternals, name) {
         Object.values(internals.childStateNodes).forEach((child) => child.internals.detach())
         internals.childStateNodes = {}
       }
-      propertyValues = {}
+      internals.propertyValues = {}
       for(const key in newState) {
         internals.proxy[key] = newState[key]
       }
@@ -113,6 +113,8 @@ function stateNode(level, initialValue, parentInternals, name) {
     {
       // prop is the name of the property or indexer ('0')
       get: function(target, prop, receiver) {
+        const ptempdeleteme = parentInternals
+        const nametempdeleteme = name
         if (externalFunctions.hasOwnProperty(prop)) {
           return externalFunctions[prop]
         }
@@ -121,14 +123,14 @@ function stateNode(level, initialValue, parentInternals, name) {
           return internals.childStateNodes[prop].proxy
         }
         // typically scalar values, including null
-        if (propertyValues.hasOwnProperty(prop)) {
+        if (internals.propertyValues.hasOwnProperty(prop)) {
           if (DEBUG) console.log(`${fullName()}['${prop}'] with existing value`)
-          return propertyValues[prop]
+          return internals.propertyValues[prop]
         }
         // property has never been accessed, so assume it's a new proxy
         if (DEBUG) console.log(`${fullName()}['${prop}'] is new state node`)
         const childState = {}
-        propertyValues[prop] = childState
+        internals.propertyValues[prop] = childState
         const childNode = stateNode(level + 1, childState, internals, prop)
         internals.childStateNodes[prop] = childNode
         return childNode.proxy
@@ -139,7 +141,7 @@ function stateNode(level, initialValue, parentInternals, name) {
         // setting a value will set it on the
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/handler/set
         if (DEBUG) console.log(`setting ${prop} at level ${level} to ${value}`)
-        propertyValues[prop] = value // should you use Reflect.set?
+        internals.propertyValues[prop] = value // should you use Reflect.set?
         // if you do const a = app.first.second; const b = a.third; a.third = 12; // then third would have been a proxy first then reassigned as a scalar
         if (internals.childStateNodes.hasOwnProperty(prop)) {
           if (DEBUG) console.log('already had child proxy.  deleting it')

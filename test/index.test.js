@@ -49,6 +49,7 @@ describe('getState', () => {
     app.a1.b1.prop1 = 'hi'
     debugger
     app.a1.b2.prop2 = true
+    // ERROR: b2 did not show up.  something with change tracking I think.
     app.a2.b3 = 23
 
     const stateBefore = app.getState()
