@@ -33,7 +33,9 @@ const mapAppState = (appState) => ({
 const ConnectedComponent = connectStore(mapAppState)(Component)
 ```
 
+## Supported JS Engines
 
+This whole thing is made possible by an ES6 feature called Proxy.  https://caniuse.com/#feat=proxy if you are concerned about browser support.
 
 ### TODO
 - **merge:** merge an object into an existing state like `appState.ui.merge({ tabs: { home: 'home' }})`
@@ -42,7 +44,9 @@ const ConnectedComponent = connectStore(mapAppState)(Component)
   appState.ui.tab = 'home'; appState.ui.page = 'main')
   }
 `
+- support arrays as state nodes
 - inline lodash functions
+- load testing with profiling
 
 ### License
 The MIT License (MIT)

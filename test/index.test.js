@@ -43,6 +43,28 @@ describe('getState', () => {
     expect(app.first.second.third).to.equal('third')
   })
 
+  it('reassigning properties mutates relevant state objects', () => {
+    const app = createStore()
+
+    app.a1.b1.prop1 = 'hi'
+    debugger
+    app.a1.b2.prop2 = true
+    app.a2.b3 = 23
+
+    const stateBefore = app.getState()
+    console.log(stateBefore)
+    app.a1.b2.prop2 = false
+    const stateAfter = app.getState()
+
+    expect(stateBefore.a2).to.equal(stateAfter.a2)
+    expect(stateBefore.a1.b1).to.equal(stateAfter.a1.b1)
+    // a1, b2, and prop2 changed
+    expect(stateBefore.a1).not.to.equal(stateAfter.a1)
+    expect(stateBefore.a1.b2).not.to.equal(stateAfter.a1.b2)
+
+  })
+
+
   it('subscribe works', () => {
     const app = createStore()
 
@@ -63,47 +85,9 @@ describe('getState', () => {
     //expect(app.getState()).to.eql({ a1: { b1: 4 }})
   })
 
+})
 
-    //
-    // const three = app.first.second.third // should this be undefined or a Proxy
-    // app.first.d4 = []
-    // // currently three will be a proxy object
-    // const f = three.four
-    // three.four = 53
-    // three.four = 12
-    // console.log(JSON.stringify(app.getState()))
-    //console.log(app.first.second.third.four.)
-    //s.first.second.third = 55
-    //const r = s.first.second.third
-    /*
-    node level 0 get 'first'
-node level 1 get 'second'
-setting third at level 2 to 55
-*/
-    //expect(55).to.equal(55);
-//  });
-//   it('should work', () => {
-//     const app = createStore({ bbb: true })
-//     //const result = s.first.second
-//
-//     const a = app.bbb
-//     expect(a).to.equal(true)
-//
-//     const three = app.first.second.third // should this be undefined or a Proxy
-//     app.first.d4 = []
-//     // currently three will be a proxy object
-//     const f = three.four
-//     three.four = 53
-//     three.four = 12
-//     console.log(JSON.stringify(app.getState()))
-//     //console.log(app.first.second.third.four.)
-//     //s.first.second.third = 55
-//     //const r = s.first.second.third
-//     /*
-//     node level 0 get 'first'
-// node level 1 get 'second'
-// setting third at level 2 to 55
-// */
-//     //expect(55).to.equal(55);
-//   });
-});
+describe('replace', () => {
+  const store = createStore()
+
+})
