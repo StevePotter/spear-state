@@ -36,11 +36,10 @@ describe('getState', () => {
 
   it('you can reassign an autobject to a scalar value', () => {
     const app = createStore()
-    const a = app.first.second
-    const b = a.third // third is now an autobject
-    a.third = 'third'
+    const a = app.first.second.third = 123
+    app.first.second = 555
 
-    expect(app.first.second.third).to.equal('third')
+    expect(app.first.second).to.equal(555)
   })
 
   it('reassigning properties mutates relevant state objects', () => {
@@ -93,6 +92,19 @@ describe('getState', () => {
 
     expect(stateBefore.a1).not.to.equal(stateAfter.a1)
     //expect(app.getState()).to.eql({ a1: { b1: 4 }})
+  })
+
+  it('keys works', () => {
+    const app = createStore()
+
+    app.a1.b1.c1 = 4
+
+    const keys = Object.keys(app)
+    for(const i in app) {
+      console.log('key', i)
+    }
+    expect(keys.length).to.equal(1)
+    console.log('keeez', keys)
   })
 
 })

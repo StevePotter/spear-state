@@ -79,7 +79,8 @@ function stateNode(level, intialProperties, parentNode, name) {
     propertyValues: intialProperties,
   }
 
-  const externalFunctions = {
+  // functions exposed to the proxy
+  const proxyFunctions = {
     toString: () => '[StateNode]',
     getState: () => node.propertyValues, // the problem here is that you could end up with someone mutating the state.  not good.  maybe have two copies, an internal one and a public one
     subscribe: (callback) => {
@@ -97,8 +98,8 @@ function stateNode(level, intialProperties, parentNode, name) {
     {
       // prop is the name of the property or indexer ('0')
       get: function(target, prop, receiver) {
-        if (externalFunctions.hasOwnProperty(prop)) {
-          return externalFunctions[prop]
+        if (proxyFunctions.hasOwnProperty(prop)) {
+          return proxyFunctions[prop]
         }
         // complex child should come before its value so you can drill down further in the object chain
         if (node.childStateNodes.hasOwnProperty(prop)) {
@@ -129,10 +130,21 @@ function stateNode(level, intialProperties, parentNode, name) {
           delete node.childStateNodes[prop]
         }
         node.propertyValues[prop] = value // should you use Reflect.set?
-
         node.onChange(prop, value)
 
         return true
+      },
+
+      has (target, key) {
+        return node.propertyValues.hasOwnProperty(key)
+      },
+
+      getOwnPropertyDescriptor(target, prop) {
+        return Object.getOwnPropertyDescriptor(node.propertyValues, prop)
+      },
+
+      ownKeys (target) {
+        return Object.keys(node.propertyValues)
       }
     }
   )
