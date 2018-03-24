@@ -46,32 +46,34 @@ export function createStore(initialState) {
   return stateNode(0, initialState ? Object.assign({}, initialState) : {}, null, 'root').proxy
 }
 
-// a stateNode represents
-function stateNode(level, intialProperties, parentInternals, name) {
+// a stateNode represents an object in the state that has child intialProperties
+// it is simply an object
+function stateNode(level, intialProperties, parentNode, name) {
   const fullName = () => {
     return `${name}@d${level}`
   }
 
   // since you can't inherit from Proxy, there are some odd patterns, but this includes everything needed for statenodes to communicate
   // the .proxy is set down below
-  const internals = {
+  const node = {
     onChange: (propertyName, value) => {
-      if (DEBUG) console.log(`${fullName()} onChange for '${propertyName}'`, internals.propertyValues)
+      if (DEBUG) console.log(`${fullName()} onChange for '${propertyName}'`, node.propertyValues)
 
-      if (!internals.propertyValues.hasOwnProperty(propertyName)) throw new Error(`Prop ${propertyName} not available`)
-      const reassignedChild = {}
-      reassignedChild[propertyName] = value
-      const newState = Object.assign({}, internals.propertyValues, reassignedChild)
-      internals.propertyValues = newState
+      if (!node.propertyValues.hasOwnProperty(propertyName)) throw new Error(`Prop ${propertyName} not available`)
+      // replace propertyValues with a clone that includes the new property.
+      // this allows us to compare states using ===.  this part is critical, and is similar to how reducers reassign state in Redux
+      const newValues = Object.assign({}, node.propertyValues)
+      newValues[propertyName] = value
+      node.propertyValues = newValues
 
-      if (internals.listeners && internals.listeners.length) {
-        if (DEBUG) console.log(`${fullName()} notifying of change on '${propertyName}'`, internals.propertyValues)
-        internals.listeners.forEach(function(listener) { listener() })
+      if (node.listeners && node.listeners.length) {
+        if (DEBUG) console.log(`${fullName()} notifying of change on '${propertyName}'`, node.propertyValues)
+        node.listeners.forEach(function(listener) { listener() })
       }
-      if (parentInternals) parentInternals.onChange(name, newState)
+      if (parentNode) parentNode.onChange(name, newValues)
     },
     detach: () => {
-      parentInternals = null // this should be all we need to orphan the branch starting here.  this in essence turns it into a root node detached from the app state
+      parentNode = null // this should be all we need to orphan the branch starting here.  this in essence turns it into a root node detached from the app state
     },
     childStateNodes: {},
     propertyValues: intialProperties,
@@ -79,55 +81,40 @@ function stateNode(level, intialProperties, parentInternals, name) {
 
   const externalFunctions = {
     toString: () => '[StateNode]',
-    // you could just return `propertyValues`
-    getState: () => Object.freeze(Object.assign({},internals.propertyValues)),
+    getState: () => node.propertyValues, // the problem here is that you could end up with someone mutating the state.  not good.  maybe have two copies, an internal one and a public one
     subscribe: (callback) => {
-      if (internals.listeners) {
-        internals.listeners.push(callback)
+      if (node.listeners) {
+        node.listeners.push(callback)
       } else {
-        internals.listeners = [callback]
-      }
-    },
-    replace: (newState) => {
-      // TODO: ensure newState is an object
-
-      if (internals.childStateNodes) {
-        Object.values(internals.childStateNodes).forEach((child) => child.internals.detach())
-        internals.childStateNodes = {}
-      }
-      internals.propertyValues = {}
-      for(const key in newState) {
-        internals.proxy[key] = newState[key]
+        node.listeners = [callback]
       }
     }
   }
 
-  // you can't extend Proxy unfortunately
-  // TODO: should you make the
+  // you can't extend Proxy and setting values on it will result in 'get' being called, so leave proxy alone
+  // instead, use 'node'
   const proxy = new Proxy({},
     {
       // prop is the name of the property or indexer ('0')
       get: function(target, prop, receiver) {
-        const ptempdeleteme = parentInternals
-        const nametempdeleteme = name
         if (externalFunctions.hasOwnProperty(prop)) {
           return externalFunctions[prop]
         }
         // complex child should come before its value so you can drill down further in the object chain
-        if (internals.childStateNodes.hasOwnProperty(prop)) {
-          return internals.childStateNodes[prop].proxy
+        if (node.childStateNodes.hasOwnProperty(prop)) {
+          return node.childStateNodes[prop].proxy
         }
         // typically scalar values, including null
-        if (internals.propertyValues.hasOwnProperty(prop)) {
+        if (node.propertyValues.hasOwnProperty(prop)) {
           if (DEBUG) console.log(`${fullName()}['${prop}'] with existing value`)
-          return internals.propertyValues[prop]
+          return node.propertyValues[prop]
         }
         // property has never been accessed, so assume it's a new proxy
         if (DEBUG) console.log(`${fullName()}['${prop}'] is new state node`)
         const childState = {}
-        internals.propertyValues[prop] = childState
-        const childNode = stateNode(level + 1, childState, internals, prop)
-        internals.childStateNodes[prop] = childNode
+        node.propertyValues[prop] = childState
+        const childNode = stateNode(level + 1, childState, node, prop)
+        node.childStateNodes[prop] = childNode
         return childNode.proxy
       },
 
@@ -137,18 +124,19 @@ function stateNode(level, intialProperties, parentInternals, name) {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/handler/set
         if (DEBUG) console.log(`setting ${prop} at level ${level} to ${value}`)
         // if you do const a = app.first.second; const b = a.third; a.third = 12; // then third would have been a proxy first then reassigned as a scalar
-        if (internals.childStateNodes.hasOwnProperty(prop)) {
+        if (node.childStateNodes.hasOwnProperty(prop)) {
           if (DEBUG) console.log('already had child proxy.  deleting it')
-          delete internals.childStateNodes[prop]
+          delete node.childStateNodes[prop]
         }
-        internals.propertyValues[prop] = value // should you use Reflect.set?
+        node.propertyValues[prop] = value // should you use Reflect.set?
 
-        internals.onChange(prop, value)
+        node.onChange(prop, value)
 
         return true
       }
     }
   )
-  internals.proxy = proxy
-  return internals
+
+  node.proxy = proxy
+  return node
 }

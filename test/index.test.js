@@ -48,25 +48,30 @@ describe('getState', () => {
 
     app.a1.b1.prop1 = 'hi'
     app.a1.b2.prop2 = true
-
-    /*resulting in
-    app.a1 = Object.assign({}, app.a1, { b2: })
-    */
-
-    // ERROR: b2 did not show up.  something with change tracking I think.
     app.a2.b3 = 23
+    app.a3.b4 = 'yo yo'
 
-    const stateBefore = app.getState()
-    console.log(stateBefore)
+    const state1 = app.getState()
+
+    // change a1, a1.b2, and a1.b2.prop2
     app.a1.b2.prop2 = false
-    const stateAfter = app.getState()
+    const state2 = app.getState()
 
-    expect(stateBefore.a2).to.equal(stateAfter.a2)
-    expect(stateBefore.a1.b1).to.equal(stateAfter.a1.b1)
+    // change a2, a2.newField
+    app.a2.newField = 'another'
+    const state3 = app.getState()
+    const state4 = app.getState()
+
+    expect(state1.a2).to.equal(state2.a2)
+    expect(state1.a1.b1).to.equal(state2.a1.b1)
+    expect(state1.a3).to.equal(state2.a3)
+    expect(state2.a3).to.equal(state3.a3)
+    expect(state3).to.equal(state4)
+
     // a1, b2, and prop2 changed
-    expect(stateBefore.a1).not.to.equal(stateAfter.a1)
-    expect(stateBefore.a1.b2).not.to.equal(stateAfter.a1.b2)
-
+    expect(state1.a1).not.to.equal(state2.a1)
+    expect(state1.a1.b2).not.to.equal(state2.a1.b2)
+    expect(state2.a2).not.to.equal(state3.a2)
   })
 
 
