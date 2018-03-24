@@ -139,6 +139,10 @@ function stateNode(level, intialProperties, parentNode, name) {
         return node.propertyValues.hasOwnProperty(key)
       },
 
+      getPrototypeOf(target) {
+        return Object.getPrototypeOf(node.propertyValues)
+      },
+
       getOwnPropertyDescriptor(target, prop) {
         return Object.getOwnPropertyDescriptor(node.propertyValues, prop)
       },

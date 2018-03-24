@@ -98,18 +98,15 @@ describe('getState', () => {
     const app = createStore()
 
     app.a1.b1.c1 = 4
+    app.a2 = 41
 
     const keys = Object.keys(app)
+    expect(keys.length).to.equal(2)
+    let keyCount = 0
     for(const i in app) {
-      console.log('key', i)
+      keyCount++
     }
-    expect(keys.length).to.equal(1)
-    console.log('keeez', keys)
+    expect(keyCount).to.equal(2)
   })
 
 })
-
-// describe('replace', () => {
-//   const store = createStore()
-//
-// })
